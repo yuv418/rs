@@ -1,0 +1,4 @@
+#+title: Reed-Solomon Codes in C
+
+
+[[https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders][Mostly from this.]]
