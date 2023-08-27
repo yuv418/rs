@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,9 +13,13 @@ void print_n_bits(uint32_t input, int bits) {
   }
 }
 
-void gf_poly_print(int *p, int p_len) {
+void gf_poly_print(int *p, int p_len, bool hex) {
   for (int i = p_len - 1; i >= 0; i--) {
-    printf("%02x x^%d", p[p_len - i - 1], i);
+    if (hex) {
+      printf("%02x x^%d", p[p_len - i - 1], i);
+    } else {
+      printf("%02d x^%d", p[p_len - i - 1], i);
+    }
 
     if (i > 0) {
       printf(" + ");
@@ -133,13 +138,43 @@ int *gf_poly_add(int *p, int p_len, int *q, int q_len) {
   }
 
   ret = malloc(ret_size * sizeof(int));
-  memcpy(ret, p, p_len * sizeof(int));
-  gf_poly_print(ret, ret_size);
+  memcpy(ret, p,
+         p_len * sizeof(int)); // Does this copy into the correct places?
+  // gf_poly_print(ret, ret_size);
   // For each value in the smaller polynomial, add them together
+  int offset = ret_size - q_len; // offset is 0 if q is larger
   for (int i = 0; i < q_len; i++) {
-    ret[i] = gf_add(ret[i], q[i]);
+    ret[i + offset] = gf_add(ret[i + offset], q[i]);
   }
   return ret;
+}
+
+int *gf_poly_mul(int *p, int p_len, int *q, int q_len) {
+  // Allocate output poly of degree (deg(p) + deg(q)), and size deg(p) + deg(q)
+  // + 1 Subtract one because p_len + q_len is actually deg(p) + deg(q) + 2, and
+  // you need 1 slot for the 0 exponent, so subtract 1.
+  int ret_size = (p_len + q_len - 1) * sizeof(int);
+  int *ret = malloc(ret_size);
+  memset(ret, 0, ret_size);
+
+  for (int i = 0; i < p_len; i++) {
+    for (int j = 0; j < q_len; j++) {
+      ret[i + j] = gf_add(ret[i + j], gf_mul_lut(p[i], q[j]));
+    }
+  }
+  return ret;
+}
+
+// Horner's polynomial evaluation
+int gf_poly_eval(int *p, int p_len, int value) {
+  // Remember, the first element is the one with the highest degree.
+  int eval_running = 0;
+  // Skip the constant
+  for (int i = 0; i < p_len - 1; i++) {
+    eval_running = gf_mul_lut(gf_add(eval_running, p[i]), value);
+  }
+  eval_running = gf_add(eval_running, p[p_len - 1]);
+  return eval_running;
 }
 
 int main(int argc, char **argv) {
@@ -166,11 +201,30 @@ int main(int argc, char **argv) {
   // Polynomial tests.
   int test_poly[5] = {0x1, 0xf, 0x36, 0x78, 0x40};
   int test_poly2[3] = {0xf, 0xe, 0x3};
-  gf_poly_print(test_poly, 5);
+  int test_poly3[2] = {0xf, 0};
+  printf("Printing polynomial 1: ");
+  gf_poly_print(test_poly, 5, false);
 
-  int *test_poly_mult = gf_poly_scalar_mul(test_poly, 5, 2);
-  gf_poly_print(test_poly_mult, 5);
+  printf("Printing polynomial 2: ");
+  gf_poly_print(test_poly2, 3, false);
 
-  int *test_poly_add = gf_poly_add(test_poly, 5, test_poly2, 3);
-  gf_poly_print(test_poly_add, 5);
+  printf("Printing polynomial 3: ");
+  gf_poly_print(test_poly3, 2, false);
+
+  printf("Scalar multiplication of polynomial: ");
+  int *test_poly_scalar_mult = gf_poly_scalar_mul(test_poly, 5, 2);
+  gf_poly_print(test_poly_scalar_mult, 5, false);
+
+  printf("Addition of polynomials: ");
+  int *test_poly_add = gf_poly_add(test_poly2, 3, test_poly, 5);
+  // This probably doesn't look right, but remember add is XOR and not +
+  gf_poly_print(test_poly_add, 5, false);
+
+  printf("Multiplication of polynomials: ");
+  int *test_poly_mult = gf_poly_mul(test_poly, 5, test_poly2, 3);
+  gf_poly_print(test_poly_mult, 7, false);
+
+  printf("Evaluation of polynomial 1 at 3: ");
+  int test_eval_poly = gf_poly_eval(test_poly, 5, 3);
+  printf("%d\n", test_eval_poly, false);
 }
