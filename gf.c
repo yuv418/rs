@@ -1,11 +1,15 @@
+#include "gf.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static uint32_t gf_exp[256];
-static uint32_t gf_log[256];
+static uint32_t gf_exp_s[256];
+static uint32_t gf_log_s[256];
+uint32_t *gf_exp = gf_exp_s;
+uint32_t *gf_log = gf_log_s;
 
 void print_n_bits(uint32_t input, int bits) {
   for (int i = 0; i < bits; i++) {
