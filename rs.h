@@ -8,6 +8,7 @@ typedef struct PolynomialQuotient {
 } poly_quotient_t;
 
 void poly_quotient_free(poly_quotient_t *to_free);
+void print_poly_quotient(poly_quotient_t *quot);
 
 int *rs_generator_poly(int num_sym);
 poly_quotient_t *rs_poly_div(int *divisor, int divisor_len, int *dividend,

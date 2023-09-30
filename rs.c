@@ -1,6 +1,7 @@
 #include "rs.h"
 #include "gf.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +43,15 @@ int *rs_generator_poly(int num_sym) {
   return output_product;
 }
 
-// Debugging function.
+// Debugging functions.
+void print_1d_array(int *arr, int len) {
+  printf("[");
+  for (int i = 0; i < len; i++) {
+    printf("%d%c", arr[i], i == len - 1 ? ']' : ' ');
+  }
+  printf("\n");
+}
+
 void print_2d_array(int **arr, int rows, int cols) {
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
@@ -50,6 +59,18 @@ void print_2d_array(int **arr, int rows, int cols) {
     }
     printf("\n");
   }
+}
+
+void print_poly_quotient(poly_quotient_t *quot) {
+  printf("quotient {\n");
+
+  printf("\tquotient: ");
+  print_1d_array(quot->quotient, quot->quotient_len);
+
+  printf("\tremainder: ");
+  print_1d_array(quot->remainder, quot->remainder_len);
+
+  printf("}\n");
 }
 
 // For optimization purposes, we could add another column and precompute all of
@@ -67,8 +88,8 @@ int diagonal_value(int *divisor, int n) {
 // TODO Convert to work with non-monic divisors
 poly_quotient_t *rs_poly_div(int *divisor, int divisor_len, int *dividend,
                              int dividend_len) {
-  // Negate divisor
-  for (int i = 0; i < divisor_len; i++) {
+  // Negate divisor except for first coefficient
+  for (int i = 1; i < divisor_len; i++) {
     divisor[i] *= -1;
   }
 
@@ -94,13 +115,21 @@ poly_quotient_t *rs_poly_div(int *divisor, int divisor_len, int *dividend,
     // Step 3*(k+1): place diagonal values
     int j = k + 1; // Column location (1 forward from the dropped location)
     if (k + divisor_len - 1 < dividend_len) {
+      // Non-monic polynomial adjustment:
+      // This is only necessary if we are to place diagonal values for the
+      // current column.
+      computation_array[divisor_len][k] /= divisor[0];
+
       for (int i = divisor_len - 1; i > 0; i--) {
-        computation_array[i][j] = diagonal_value(divisor, divisor_len - i) *
-                                  computation_array[i + 1][j - 1];
+        // Note that divisor[divisor_len - i] is the diagonal multiplier value.
+        // computation_array[divisor_len][k] is the dropped column value.
+        computation_array[i][j] =
+            divisor[divisor_len - i] * computation_array[divisor_len][k];
         j++;
       }
     }
   }
+  // print_2d_array(computation_array, divisor_len + 1, dividend_len);
 
   poly_quotient_t *poly_quot = malloc(sizeof(poly_quotient_t));
   // Populate the quotient struct with our values.
@@ -122,6 +151,4 @@ poly_quotient_t *rs_poly_div(int *divisor, int divisor_len, int *dividend,
   free(computation_array);
 
   return poly_quot;
-
-  // print_2d_array(computation_array, divisor_len + 1, dividend_len);
 }
